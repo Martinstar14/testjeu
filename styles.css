@@ -149,3 +149,31 @@ h1 {
 .rocket-blink {
   animation: blink-animation 0.4s ease-in-out 2; /* Répète deux fois */
 }
+
+@keyframes rocket-flame {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(0.5);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.rocket-flame {
+  position: absolute;
+  bottom: -10px; /* Ajustez la position verticale */
+  left: 50%; /* Ajustez la position horizontale */
+  transform: translateX(-50%);
+  width: 20px;
+  height: 40px;
+  background-color: #ff6600; /* Couleur du feu */
+  border-radius: 50%;
+  animation: rocket-flame 0.5s infinite alternate; /* Animation du feu */
+  opacity: 0.7;
+}

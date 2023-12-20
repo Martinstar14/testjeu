@@ -18,7 +18,7 @@ let levelDuration = 30; // Durée de chaque niveau en secondes
 let timeReduction = 50; // Réduction du temps pour chaque niveau (en millisecondes)
 let currentSeconds = 0; // Temps courant
 let totalSeconds = 0; // Temps total écoulé
-let obstacleSpeed = 1;
+let obstacleSpeed = 1.3;
 
 
 const FPS = 60; // Fréquence d'images par seconde
@@ -28,10 +28,12 @@ document.addEventListener('DOMContentLoaded', function() {
   gameLoop(); // Affiche la fenêtre modale lorsque la page est chargée
 });
 
+// Gèrent le timer du jeu au lancement
 function startTimer() {
   timer = setInterval(updateTimer, 1000); // Mettre à jour le chrono chaque seconde (1000ms)
 }
 
+// Gèrent le timer du jeu
 function showTimer() {
   seconds = timerRunning % levelDuration;
 
@@ -42,6 +44,7 @@ function showTimer() {
   timerRunning += 1;
 }
 
+// Met a jour le timer 
 function updateTimer() {
   totalSeconds++; // Incrémente le temps total écoulé
   currentSeconds++;
@@ -70,23 +73,30 @@ function updateTimer() {
   }
 }
 
+// Iden pour le timer
 function stopTimer() {
   clearInterval(timer); // Arrêter le chrono
 }
 
+// Met à jour la position de la fusée en fonction des touches enfoncées
 function moveRocket() {
   let rocket = document.getElementById('rocket');
+  let gameContainer = document.querySelector('.game-container');
 
-  if (isMovingLeft && rocketPositionX > 0) {
-    rocketPositionX -= 10; // Déplacement vers la gauche
-  } else if (isMovingRight && rocketPositionX < (window.innerWidth - rocket.clientWidth)) {
-    rocketPositionX += 10; // Déplacement vers la droite
+  if (gameContainer) {
+    let gameContainerWidth = gameContainer.offsetWidth;
+
+    if (isMovingLeft && rocketPositionX > 0) {
+      rocketPositionX -= 10; // Déplacement vers la gauche
+    } else if (isMovingRight && (rocketPositionX + rocket.clientWidth) <= gameContainerWidth) {
+      rocketPositionX += 10; // Déplacement vers la droite
+    }
+
+    rocket.style.left = rocketPositionX + 'px'; // Déplacement horizontal de la fusée
   }
-
-  rocket.style.left = rocketPositionX + 'px'; // Déplacement horizontal de la fusée
-
 }
 
+// Fonction pour le départ de la game 
 function startGame() {
   document.getElementById('jouer-text').style.display = 'none';
 
@@ -108,12 +118,14 @@ function startGame() {
 
   level = 1; // Démarre le jeu au niveau 1
   startTimer();
+  toggleRocketFlame();
   startLevelX(level);
   obstacleInterval = setInterval(createObstacle, time);
   gameLoop();
   updateLivesDisplay();
 }
 
+// Fonction pour initialise le jeu et les niveaux
 function startLevelX(levelX) {
   niveauElement.textContent = "Niveau : " + levelX;
 
@@ -141,12 +153,13 @@ function startLevelX(levelX) {
   clearInterval(obstacleInterval);
   obstacleInterval = setInterval(createObstacle, time);
 
+  createHeart(); // Fait tomber un cœur à chaque niveau
+
   // Appeler la nouvelle fonction d'animation de fin de niveau
   endLevelAnimation();
 }
 
-
-
+// Fonction pour l'animation quand je passe un niveau
 function endLevelAnimation() {
   let h1Element = document.querySelector('h1');
   h1Element.classList.add('rotate-depth-animation');
@@ -156,6 +169,28 @@ function endLevelAnimation() {
   }, 3000); // Supprime la classe après 3 secondes (ajustez la durée selon vos besoins)
 }
 
+function toggleRocketFlame() {
+  let rocket = document.getElementById('rocket');
+  let rocketFlame = document.createElement('div');
+  rocketFlame.classList.add('rocket-flame');
+  rocket.appendChild(rocketFlame);
+
+  // Activer l'animation lorsque la fusée se déplace
+  document.addEventListener('keydown', function(event) {
+    if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+      rocketFlame.style.display = 'block';
+    }
+  });
+
+  // Désactiver l'animation lorsque la fusée est immobile
+  document.addEventListener('keyup', function(event) {
+    if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+      rocketFlame.style.display = 'none';
+    }
+  });
+}
+
+// Foncction pour créer les obstacles qui tombent
 function createObstacle() {
   if (obstacles.length < level * 5) {
     let obstacle = document.createElement('div');
@@ -186,6 +221,56 @@ function createObstacle() {
   }
 }
 
+function createHeart() {
+  let heart = document.createElement('img');
+  heart.src = 'coeur.png'; // Chemin de l'image du cœur
+  heart.alt = 'Coeur';
+  heart.classList.add('heart'); // Ajoutez une classe pour styler le cœur
+
+  let heartPositionX = Math.floor(Math.random() * 850); // Position aléatoire sur l'axe X
+  heart.style.position = 'absolute';
+  heart.style.left = heartPositionX + 'px';
+  heart.style.top = '-50px'; // Fait apparaître le cœur en dehors de la zone de jeu
+
+  document.querySelector('.game-container').appendChild(heart); // Ajoute le cœur à la div "game-container"
+
+  // Fait tomber le cœur
+  setInterval(function() {
+    moveHeart(heart);
+  }, frameInterval);
+}
+
+function moveHeart(heart) {
+  let currentPosition = parseInt(heart.style.top);
+  if (currentPosition >= 800) {
+    heart.parentNode.removeChild(heart); // Retire le cœur une fois hors de l'écran
+  } else {
+    heart.style.top = currentPosition + 1 + 'px'; // Vitesse de descente du cœur
+    detectHeartCollision(heart); // Vérifie la collision avec la fusée à chaque déplacement
+  }
+}
+
+function detectHeartCollision(heart) {
+  let rocket = document.getElementById('rocket');
+  let rocketPosition = rocket.getBoundingClientRect();
+  let heartPosition = heart.getBoundingClientRect();
+
+  if (
+    rocketPosition.bottom >= heartPosition.top &&
+    rocketPosition.top <= heartPosition.bottom &&
+    rocketPosition.right >= heartPosition.left &&
+    rocketPosition.left <= heartPosition.right
+  ) {
+    // Collision détectée avec le cœur
+    if (lives < 3) { // Vérifie si des vies ont été perdues précédemment
+      lives++; // Ajoute un cœur à la vie
+      updateLivesDisplay(); // Met à jour l'affichage des vies
+    }
+    heart.parentNode.removeChild(heart); // Retire le cœur
+  }
+}
+
+// Fonction pour controler la vitesse des obsatcles pour chaque niveau (ca ne fonctionne pas)
 function calculateObstacleSpeed(level) {
   // Calcul de la vitesse de l'obstacle en fonction du niveau
   switch (level) {
@@ -214,6 +299,7 @@ function calculateObstacleSpeed(level) {
   }
 }
 
+// Fonction pour mettre a jour la vie dans le jeu
 function updateLivesDisplay() {
   heartContainer.innerHTML = ''; // Réinitialise l'affichage des cœurs
 
@@ -225,6 +311,7 @@ function updateLivesDisplay() {
   }
 }
 
+// Fonction pour le déplacement des obstacles
 function moveObstacle(index) {
   let currentPosition = parseInt(obstacles[index].style.top);
   if (currentPosition >= 800) {
@@ -235,13 +322,14 @@ function moveObstacle(index) {
   }
 }
 
-// Fonction pour déclencher une secousse
+// Fonction pour déclencher une secousse (ca ne fonctionne pas)
 function vibrateDevice() {
   if (navigator.vibrate) {
     navigator.vibrate(200); // 200 millisecondes de secousse
   }
 }
 
+// Fonction pour avoir une collision entre la fusée et l'obstacle
 function detectCollision() {
   let rocket = document.getElementById('rocket');
   let rocketPosition = rocket.getBoundingClientRect();
@@ -281,7 +369,7 @@ function detectCollision() {
   }
 }
 
-
+// Fonction qui stop le jeu et la création d'obstacle
 function stopGame() {
   clearInterval(obstacleInterval); // Arrête la création d'obstacles
   clearInterval(timer); // Arrête le chrono
@@ -289,11 +377,14 @@ function stopGame() {
   location.reload();
 }
 
+// Fonction gameLoop qui est la boucle du jeu et qui met à jour les mouvements et vérifie les collisions à chaque frame
 function gameLoop() {
   moveRocket();
   detectCollision(); // Détecte les collisions à chaque frame
   setTimeout(gameLoop, frameInterval);
 }
+
+// POUR LES TOUCHES PC ET SMARTPHONE
 
 let touchStartX = 0;
 let touchEndX = 0;
